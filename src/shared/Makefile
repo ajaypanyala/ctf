@@ -13,5 +13,7 @@ $(OBJS): $(ODIR)/%.o: %.cxx *.h  $(HDRS)
 	$(FCXX) -c $< -o $@
 
 $(NVCC_OBJS): $(ODIR)/%.o: %.cu *.h $(HDRS)
+	# OFFLOAD_CXX_MOD=$${OFFLOAD_CXX//-fPIC}
+	# $(OFFLOAD_CXX_MOD) -Xcompiler -fPIC -c $< -o $@
 	$(OFFLOAD_CXX) -c $< -o $@
 

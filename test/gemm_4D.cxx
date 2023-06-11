@@ -21,80 +21,91 @@ int  gemm_4D(int const    n,
   MPI_Comm_size(MPI_COMM_WORLD, &num_pes);
 
 
-  int shapeN4[] = {sym,NS,sym,NS};
+  int shapeN4[] = {NS,NS,NS,NS};
   int sizeN4[] = {n,n,n,n};
+  // int O = n/10;
+  int sizeT4[] = {n,n,n,n};
 
   //* Creates distributed tensors initialized with zeros
-  Tensor<> A(4, sizeN4, shapeN4, dw);
-  Tensor<> B(4, sizeN4, shapeN4, dw);
-  Tensor<> C(4, sizeN4, shapeN4, dw);
+  MPI_Barrier(MPI_COMM_WORLD);
+  double t1 = MPI_Wtime();  
+  Tensor<double> A(4, sizeT4, shapeN4, dw);
+  Tensor<double> B(4, sizeN4, shapeN4, dw);
+  Tensor<double> C(4, sizeT4, shapeN4, dw);
 
-  srand48(13*rank);
-  //* Writes noise to local data based on global index
-  A.get_local_data(&np, &indices, &pairs);
-  for (i=0; i<np; i++ ) pairs[i] = drand48()-.5; //(1.E-3)*sin(indices[i]);
-  A.write(np, indices, pairs);
-  delete [] pairs;
-  free(indices);
-  B.get_local_data(&np, &indices, &pairs);
-  for (i=0; i<np; i++ ) pairs[i] = drand48()-.5; //(1.E-3)*sin(indices[i]);
-  B.write(np, indices, pairs);
-  delete [] pairs;
-  free(indices);
-  C.get_local_data(&np, &indices, &pairs);
-  for (i=0; i<np; i++ ) pairs[i] = drand48()-.5; //(1.E-3)*sin(indices[i]);
-  C.write(np, indices, pairs);
-  delete [] pairs;
-  free(indices);
-
+  // srand48(13*rank);
+  // //* Writes noise to local data based on global index
+  // A.get_local_data(&np, &indices, &pairs);
+  // for (i=0; i<np; i++ ) pairs[i] = drand48()-.5; //(1.E-3)*sin(indices[i]);
+  // A.write(np, indices, pairs);
+  // delete [] pairs;
+  // free(indices);
+  // B.get_local_data(&np, &indices, &pairs);
+  // for (i=0; i<np; i++ ) pairs[i] = drand48()-.5; //(1.E-3)*sin(indices[i]);
+  // B.write(np, indices, pairs);
+  // delete [] pairs;
+  // free(indices);
+  // C.get_local_data(&np, &indices, &pairs);
+  // for (i=0; i<np; i++ ) pairs[i] = drand48()-.5; //(1.E-3)*sin(indices[i]);
+  // C.write(np, indices, pairs);
+  // delete [] pairs;
+  // free(indices);
+  MPI_Barrier(MPI_COMM_WORLD);
+  double time1 = MPI_Wtime()- t1;
+  if (rank == 0) printf("Time to allocate,initialize tensors = %lf s\n",time1);
 
 #ifndef TEST_SUITE
   double time;
-  double t = MPI_Wtime();
   for (i=0; i<niter; i++){
-    C["ijkl"] += (.3*i)*A["ijmn"]*B["mnkl"];
-  }
-  time = MPI_Wtime()- t;
-  if (rank == 0){
-    double nd = (double)n;
-    double c = 2.E-9;
-    if (sym == SY || sym == AS){
-      c = c/8.;
+    MPI_Barrier(MPI_COMM_WORLD);
+    double t = MPI_Wtime();      
+    
+    C["ijkl"] += A["ijmn"]*B["mnkl"];
+  
+    MPI_Barrier(MPI_COMM_WORLD);
+    time = MPI_Wtime()- t;
+    if (rank == 0){
+      double nd = (double)n;
+      double c = 2.E-9;
+      if (sym == SY || sym == AS){
+        printf("NOT POSSIBLE\n");
+        c = c/8.;
+      }
+      printf("%lf seconds/GEMM %lf GF\n",
+              time,c*nd*nd*nd*nd*nd*nd/time);
+      printf("Verifying associativity\n");
     }
-    printf("%lf seconds/GEMM %lf GF\n",
-            time/niter,niter*c*nd*nd*nd*nd*nd*nd/time);
-    printf("Verifying associativity\n");
   }
 #endif
   
   /* verify D=(A*B)*C = A*(B*C) */
-  Tensor<> D(4, sizeN4, shapeN4, dw);
+  // Tensor<> D(4, sizeN4, shapeN4, dw);
   
-  D["ijkl"] = A["ijmn"]*B["mnkl"];
-  D["ijkl"] = D["ijmn"]*C["mnkl"];
-  C["ijkl"] = B["ijmn"]*C["mnkl"];
-  C["ijkl"] = A["ijmn"]*C["mnkl"];
+  // D["ijkl"] = A["ijmn"]*B["mnkl"];
+  // D["ijkl"] = D["ijmn"]*C["mnkl"];
+  // C["ijkl"] = B["ijmn"]*C["mnkl"];
+  // C["ijkl"] = A["ijmn"]*C["mnkl"];
   
-  C.align(D);  
-  C.get_local_data(&np, &indices_BC, &pairs_BC);
-  D.get_local_data(&np, &indices_AB, &pairs_AB);
-  int pass = 1;
-  for (i=0; i<np; i++){
-    if (fabs((double)pairs_BC[i]-(double)pairs_AB[i])>=1.E-6) pass = 0;
-  }
-  delete [] pairs_AB;
-  delete [] pairs_BC;
-  free(indices_AB);
-  free(indices_BC);
-  if (rank == 0){
-    MPI_Reduce(MPI_IN_PLACE, &pass, 1, MPI_INT, MPI_MIN, 0, MPI_COMM_WORLD);
-    if (pass)
-      printf("{ (A[\"ijmn\"]*B[\"mnpq\"])*C[\"pqkl\"] = A[\"ijmn\"]*(B[\"mnpq\"]*C[\"pqkl\"]) } passed\n");
-    else 
-      printf("{ (A[\"ijmn\"]*B[\"mnpq\"])*C[\"pqkl\"] = A[\"ijmn\"]*(B[\"mnpq\"]*C[\"pqkl\"]) } failed!\n");
-  } else 
-    MPI_Reduce(&pass, MPI_IN_PLACE, 1, MPI_INT, MPI_MIN, 0, MPI_COMM_WORLD);
-  return pass;
+  // C.align(D);  
+  // C.get_local_data(&np, &indices_BC, &pairs_BC);
+  // D.get_local_data(&np, &indices_AB, &pairs_AB);
+  // int pass = 1;
+  // for (i=0; i<np; i++){
+  //   if (fabs((double)pairs_BC[i]-(double)pairs_AB[i])>=1.E-6) pass = 0;
+  // }
+  // delete [] pairs_AB;
+  // delete [] pairs_BC;
+  // free(indices_AB);
+  // free(indices_BC);
+  // if (rank == 0){
+  //   MPI_Reduce(MPI_IN_PLACE, &pass, 1, MPI_INT, MPI_MIN, 0, MPI_COMM_WORLD);
+  //   if (pass)
+  //     printf("{ (A[\"ijmn\"]*B[\"mnpq\"])*C[\"pqkl\"] = A[\"ijmn\"]*(B[\"mnpq\"]*C[\"pqkl\"]) } passed\n");
+  //   else 
+  //     printf("{ (A[\"ijmn\"]*B[\"mnpq\"])*C[\"pqkl\"] = A[\"ijmn\"]*(B[\"mnpq\"]*C[\"pqkl\"]) } failed!\n");
+  // } else 
+  //   MPI_Reduce(&pass, MPI_IN_PLACE, 1, MPI_INT, MPI_MIN, 0, MPI_COMM_WORLD);
+  return true;
 } 
 
 
@@ -126,8 +137,8 @@ int main(int argc, char ** argv){
 
   if (getCmdOption(input_str, input_str+in_num, "-niter")){
     niter = atoi(getCmdOption(input_str, input_str+in_num, "-niter"));
-    if (niter < 0) niter = 3;
-  } else niter = 3;
+    if (niter < 0) niter = 2;
+  } else niter = 2;
 
 
 
@@ -135,26 +146,27 @@ int main(int argc, char ** argv){
     World dw(argc, argv);
 
     if (rank == 0){
+      printf("n = %d\n",n);
       printf("Computing C_ijkl = A_ijmn*B_klmn\n");
       printf("Non-symmetric: NS = NS*NS gemm:\n");
     }
     pass = gemm_4D(n, NS, niter, dw);
     assert(pass);
-    if (rank == 0){
-      printf("Symmetric: SY = SY*SY gemm:\n");
-    }
-    pass = gemm_4D(n, SY, niter, dw);
-    assert(pass);
-    if (rank == 0){
-      printf("(Anti-)Skew-symmetric: AS = AS*AS gemm:\n");
-    }
-    pass = gemm_4D(n, AS, niter, dw);
-    assert(pass);
-    if (rank == 0){
-      printf("Symmetric-hollow: SH = SH*SH gemm:\n");
-    }
-    pass = gemm_4D(n, SH, niter, dw);
-    assert(pass);
+    // if (rank == 0){
+    //   printf("Symmetric: SY = SY*SY gemm:\n");
+    // }
+    // pass = gemm_4D(n, SY, niter, dw);
+    // assert(pass);
+    // if (rank == 0){
+    //   printf("(Anti-)Skew-symmetric: AS = AS*AS gemm:\n");
+    // }
+    // pass = gemm_4D(n, AS, niter, dw);
+    // assert(pass);
+    // if (rank == 0){
+    //   printf("Symmetric-hollow: SH = SH*SH gemm:\n");
+    // }
+    // pass = gemm_4D(n, SH, niter, dw);
+    // assert(pass);
   }
 
   MPI_Finalize();

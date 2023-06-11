@@ -248,7 +248,7 @@ function testmpi
   cat > .test.cxx <<EOF
   #include "mpi.h"
   int main(){ 
-    MPI_Init(NULL,NULL);
+    MPI_Init(0,0);
     MPI_Datatype a = $1;
     MPI_Finalize();
     return 0; 
@@ -1170,7 +1170,7 @@ if [ "x$NVCC" = "x" ]; then
     echo -n 'automatic nvcc setup requested... '
     NVCC='nvcc -ccbin g++ -x cu'
     NVCCFLAGS='-O2 -std=c++11 -m64'
-    LINKFLAGS="$LINKFLAGS -L/usr/local/cuda/lib64 -lcuda -lcudart"
+    LINKFLAGS="$LINKFLAGS -L/opt/nvidia/hpc_sdk/Linux_x86_64/22.7/cuda/11.7/lib64 -L/opt/nvidia/hpc_sdk/Linux_x86_64/22.7/math_libs/11.7/targets/x86_64-linux/lib/  -lcuda -lcudart"
     if testnvcc $VERBOSE; then
       echo 'nvcc defaults work successfully.'
       DEFS="$DEFS -DOFFLOAD -DUSE_CUDA"

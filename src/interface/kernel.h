@@ -55,27 +55,27 @@ namespace CTF{
   }
 
 
-  template<typename dtype_A, typename dtype_B, typename dtype_C, dtype_C(*f)(dtype_A, dtype_B), void(*g)(dtype_C, dtype_C&)>
-  __device__ 
-  void cuda_csrmmf(int             m,
-                   int             n,
-                   int             k,
-                   dtype_A const * A,
-                   int const *     JA,
-                   int const *     IA,
-                   dtype_B const * B,
-                   dtype_C *       C){
-    int bidx = blockIdx.x;
-    int tidx = threadIdx.x;
-    for (int col_B=bidx; col_B<n; col_B+=NBLK){
-      for (int row_A=tidx; row_A<m; row_A+=NTRD){
-        for (int i_A=IA[row_A]-1; i_A<IA[row_A+1]-1; i_A++){
-          int col_A = JA[i_A]-1;
-          g(f(A[i_A],B[col_B*k+col_A]),C[col_B*m+row_A]);
-        }
-      }
-    }
-  }
+  // template<typename dtype_A, typename dtype_B, typename dtype_C, dtype_C(*f)(dtype_A, dtype_B), void(*g)(dtype_C, dtype_C&)>
+  // __device__ 
+  // void cuda_csrmmf(int             m,
+  //                  int             n,
+  //                  int             k,
+  //                  dtype_A const * A,
+  //                  int const *     JA,
+  //                  int const *     IA,
+  //                  dtype_B const * B,
+  //                  dtype_C *       C){
+  //   int bidx = blockIdx.x;
+  //   int tidx = threadIdx.x;
+  //   for (int col_B=bidx; col_B<n; col_B+=NBLK){
+  //     for (int row_A=tidx; row_A<m; row_A+=NTRD){
+  //       for (int i_A=IA[row_A]-1; i_A<IA[row_A+1]-1; i_A++){
+  //         int col_A = JA[i_A]-1;
+  //         g(f(A[i_A],B[col_B*k+col_A]),C[col_B*m+row_A]);
+  //       }
+  //     }
+  //   }
+  // }
   
   //FIXME there is code replication here with ../sparse_foramts/csr.cxx
   #define ALIGN 256
