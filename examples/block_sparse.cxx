@@ -47,7 +47,7 @@ Matrix<> flatten_block_sparse_matrix(Matrix< Tensor<> > A, std::vector<int> rang
     offs[1] = range_pfx[i];
     ends[0] = range_pfx[j]+ranges[j];
     ends[1] = range_pfx[i]+ranges[i];
-    flatA.slice(offs,ends,0.0,A_blks[b],zeros,A_blks[b].lens,1.0);
+    // flatA.slice(offs,ends,0.0,A_blks[b],zeros,A_blks[b].lens,1.0);
   }
   free(blk_inds);
   delete [] A_blks;
