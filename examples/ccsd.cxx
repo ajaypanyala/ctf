@@ -122,7 +122,7 @@ void ccsd(int noa, int nva, int nob, int nvb, int ncv, World &dw, int sched_npar
   t2_aaaa_temp["ijkl"] += t2_aaaa["ijkl"];
 
   _a01V["c"]      =        t1_aa["ij"] * chol3d_ov_aa["jic"];
-  _a02_aa["ij"]   =        t1_aa["ai"] * chol3d_ov_aa["ja"];
+  _a02_aa["ijc"]   =        t1_aa["ai"] * chol3d_ov_aa["jac"];
   _a03_aa["iac"]  =        t2_aaaa_temp["abij"] * chol3d_ov_aa["jbc"];
   de[""]          =  2.0 * _a01V["c"] * _a01V["c"];
   de[""]         += -1.0 * _a02_aa["ijc"] * _a02_aa["jic"];
